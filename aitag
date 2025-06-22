@@ -160,16 +160,17 @@ fi
 
 LAST_TAG=$(git tag | sort | tail -n1)
 
-LOGS=
+DIFF=
 if [ -z "$LAST_TAG" ]; then
-    LOGS=$(git log -p)
+    first_commit=$(git rev-list --max-parents=0 HEAD)
+    DIFF=$(git diff "$first_commit"..."$COMMIT")
 else
-    LOGS=$(git log -p "$LAST_TAG".."$COMMIT")
+    DIFF=$(git diff "$LAST_TAG"..."$COMMIT")
 fi
 
 spin_animation "Generating tag message" &
 SPIN_PID=$!
-MSG=$(echo "$LOGS" | llm -s "$(cat "$PROMPT")")
+MSG=$(echo "$DIFF" | llm -s "$(cat "$PROMPT")")
 kill_spin
 
 TEMP=$(mktemp)
