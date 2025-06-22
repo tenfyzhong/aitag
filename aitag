@@ -130,6 +130,11 @@ if [ -z "$2" ]; then
     COMMIT=HEAD
 fi
 
+if ! git rev-parse --verify "$COMMIT" >/dev/null 2>&1; then
+    echo -e "${RED}Error: '$COMMIT' is not a valid commit or branch${NC}" >&2
+    exit 1
+fi
+
 LAST_TAG=$(git tag | sort | tail -n1)
 
 LOGS=
