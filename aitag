@@ -172,9 +172,16 @@ SPIN_PID=$!
 MSG=$(echo "$LOGS" | llm -s "$(cat "$PROMPT")")
 kill_spin
 
+TEMP=$(mktemp)
+echo "$MSG" > "$TEMP"
+${EDITOR:-vi} "$TEMP"
+
+
 read -p "Create tag:$TAG_NAME with these details? [y/N] " confirm
 if [[ $confirm =~ ^[Yy]$ ]]; then
-    git tag "${TAG_OPTS[@]}" -e -m "$MSG" "$TAG_NAME" "$COMMIT"
+    git tag "${TAG_OPTS[@]}" -F "$TEMP" "$TAG_NAME" "$COMMIT"
 else
     echo "Tag creation cancelled"
 fi
+
+rm -f "$TEMP"
