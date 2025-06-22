@@ -119,6 +119,11 @@ if ! check_required_commands; then
     exit 1
 fi
 
+if ! is_git_repo; then
+    echo "Not in a Git repository" >&2
+    exit 1
+fi
+
 if [ -z "$1" ]; then
     exit 1
 fi
