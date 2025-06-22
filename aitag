@@ -162,8 +162,8 @@ LAST_TAG=$(git tag | sort | tail -n1)
 
 DIFF=
 if [ -z "$LAST_TAG" ]; then
-    first_commit=$(git rev-list --max-parents=0 HEAD)
-    DIFF=$(git diff "$first_commit"..."$COMMIT")
+    # If there no tag, all file are used to generate the message
+    DIFF=$(git ls-files | xargs cat)
 else
     DIFF=$(git diff "$LAST_TAG"..."$COMMIT")
 fi
