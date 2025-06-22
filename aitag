@@ -162,9 +162,9 @@ LAST_TAG=$(git tag | sort | tail -n1)
 
 LOGS=
 if [ -z "$LAST_TAG" ]; then
-    LOGS=$(git log)
+    LOGS=$(git log -p)
 else
-    LOGS=$(git log "$LAST_TAG".."$COMMIT")
+    LOGS=$(git log -p "$LAST_TAG".."$COMMIT")
 fi
 
 spin_animation "Generating tag message" &
