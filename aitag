@@ -64,7 +64,25 @@ is_git_repo() {
 }
 
 show_help() {
-    :
+    echo -e "${GREEN}Usage:${NC} aitag [OPTIONS] TAG_NAME [COMMIT]"
+    echo
+    echo -e "${YELLOW}Options:${NC}"
+    echo -e "  -h, --help            Show this help message"
+    echo -e "  -a, --annotate        Create an annotated tag"
+    echo -e "  -s, --sign            Create a signed tag"
+    echo -e "  -u, --local-user USER Create tag with specific user"
+    echo -e "  --prompt FILE         Use custom prompt file"
+    echo -e "  --model MODEL         Specify LLM model to use"
+    echo
+    echo -e "${YELLOW}Environment Variables:${NC}"
+    echo -e "  LLM_TAG_PROMPT       Default prompt file path (default: $DEFAULT_PROMPT_FILE)"
+    echo -e "  LLM_TAG_MODEL        Default LLM model to use"
+    echo
+    echo -e "${YELLOW}Examples:${NC}"
+    echo -e "  aitag v1.0.0                  # Tag HEAD commit as v1.0.0"
+    echo -e "  aitag -a v1.0.0 abc1234       # Create annotated tag for specific commit"
+    echo -e "  aitag --model gpt-4 v1.0.0    # Use gpt-4 model for message generation"
+    echo -e "  LLM_TAG_MODEL=gpt-4 aitag v1.0.0  # Use gpt-4 via environment variable"
 }
 
 DEFAULT_PROMPT_FILE=~/.config/prompts/tag-system-prompt.txt
