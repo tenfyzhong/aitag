@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+# Thanks Harper Reed https://harper.blog/2024/03/11/use-an-llm-to-automagically-generate-meaningful-git-commit-messages/
+
+# ANSI color codes for styling the output
+RED='\033[0;31m'    # Sets text to red
+GREEN='\033[0;32m'  # Sets text to green
+YELLOW='\033[0;33m' # Sets text to yellow
+BLUE='\033[0;34m'   # Sets text to blue
+NC='\033[0m'        # Resets the text color to default, no color
+
+check_required_commands() {
+    local missing=0
+    for cmd in git llm; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            echo "Error: $cmd is not installed"
+            missing=$((missing + 1))
+        fi
+    done
+    return $missing
+}
+
+cleanup() {
+    echo -e "\n${RED}Script interrupted. Cleaning up...${NC}"
+    kill_spin
+    tput cnorm # Show the cursor
+    exit 1
+}
+
+# Function to display a spinning animation during the LLM processing
+spin_animation() {
+    local msg="$1"
+    # Only show animation if output is going to a terminal
+    if ! [ -t 1 ]; then
+        echo "$1..." # Just show the message without animation
+        return
+    fi
+
+    # Array of spinner characters for the animation
+    local spinner=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    # Infinite loop to keep the animation running
+    while true; do
+        for i in "${spinner[@]}"; do
+            tput civis  # Hide the cursor to enhance the animation appearance
+            tput el1    # Clear the line from the cursor to the beginning to display the spinner
+            printf "\r${YELLOW}%s${NC} %s..." "$i" "$msg" # Print the spinner and message
+            sleep 0.1   # Delay to control the speed of the animation
+            tput cub $(( ${#msg} + 5 )) # Move the cursor back to reset the spinner position
+        done
+    done
+}
+
+
+kill_spin() {
+    if [ -n "$SPIN_PID" ]; then
+        kill $SPIN_PID
+        wait $SPIN_PID 2>/dev/null  # Wait for the process to terminate and suppress error messages
+        SPIN_PID=
+        printf "\n"
+    fi
+}
+
+is_git_repo() {
+    git rev-parse --is-inside-work-tree >/dev/null 2>&1
+}
+
+show_help() {
+    :
+}
+
+DEFAULT_PROMPT_FILE=~/.config/prompts/tag-system-prompt.txt
+if [ ! -f "$DEFAULT_PROMPT_FILE" ]; then
+    DEFAULT_PROMPT_FILE=$(brew --prefix)/share/aitag/prompts/tag-system-prompt.txt
+fi
+
+TAG_OPTS=()
+PROMPT=${LLM_TAG_PROMPT:-$DEFAULT_PROMPT_FILE}
+MODEL=${LLM_TAG_MODEL}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help)
+            show_help
+            exit
+            ;;
+        -a|--annotate)
+            TAG_OPTS+=("$1")
+            shift
+            ;;
+        -s|--sign)
+            TAG_OPTS+=("$1")
+            shift
+            ;;
+        -u|--local-user)
+            TAG_OPTS+=("-u" "$2")
+            shift 2
+            ;;
+        --prompt)
+            PROMPT="$2"
+            shift 2
+            ;;
+        --model)
+            MODEL="$2"
+            shift 2
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+if [ -n "$MODEL" ]; then
+    export LLM_MODEL="$MODEL"
+fi
+
+trap cleanup SIGINT
+
+if ! check_required_commands; then
+    echo "Please install missing commands before proceeding" >&2
+    exit 1
+fi
+
+if [ -z "$1" ]; then
+    exit 1
+fi
+
+TAG_NAME="$1"
+
+COMMIT=$2
+if [ -z "$2" ]; then
+    COMMIT=HEAD
+fi
+
+LAST_TAG=$(git tag | sort | tail -n1)
+
+LOGS=
+if [ -z "$LAST_TAG" ]; then
+    LOGS=$(git log)
+else
+    LOGS=$(git log "$LAST_TAG".."$COMMIT")
+fi
+
+spin_animation "Generating tag message" &
+SPIN_PID=$!
+MSG=$(echo "$LOGS" | llm -s "$(cat "$PROMPT")")
+kill_spin
+
+git tag "${TAG_OPTS[@]}" -e -m "$MSG" "$TAG_NAME" "$COMMIT"
